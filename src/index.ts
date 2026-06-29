@@ -8,35 +8,32 @@ if (!token) {
 
 const bot = new Bot(token);
 
-function escapeMarkdown(value: string): string {
-  // Telegram legacy Markdown: escape the characters that break parsing.
-  return value.replace(/([_*`\[])/g, "\\$1");
-}
-
 bot.command("pwd", async (ctx) => {
   const chat = ctx.chat;
   const threadId = ctx.message?.message_thread_id;
 
-  const lines: string[] = [
-    `*Chat ID:* \`${chat.id}\``,
-    `*Type:* ${chat.type}`,
+  const fields: [string, string | number | undefined][] = [
+    ["chat_id", chat.id],
+    ["thread_id", threadId],
+    ["user_id", ctx.from?.id],
+    ["username", "username" in chat ? chat.username : undefined],
+    ["title", "title" in chat ? chat.title : undefined],
+    ["type", chat.type],
   ];
 
-  if ("title" in chat && chat.title) {
-    lines.push(`*Title:* ${escapeMarkdown(chat.title)}`);
-  }
-  if ("username" in chat && chat.username) {
-    lines.push(`*Username:* @${chat.username}`);
-  }
-  if (threadId !== undefined) {
-    lines.push(`*Thread ID:* \`${threadId}\``);
-  }
-  if (ctx.from) {
-    lines.push(`*Your user ID:* \`${ctx.from.id}\``);
-  }
+  const present = fields.filter(
+    ([, value]) => value !== undefined && value !== "",
+  );
+  const pad = Math.max(...present.map(([key]) => key.length)) + 1;
 
-  await ctx.reply(lines.join("\n"), {
-    parse_mode: "Markdown",
+  const body = present
+    .map(([key, value]) => `${(key + ":").padEnd(pad)} ${value}`)
+    .join("\n")
+    // MarkdownV2 code blocks still require escaping backtick and backslash.
+    .replace(/[`\\]/g, "\\$&");
+
+  await ctx.reply("```\n" + body + "\n```", {
+    parse_mode: "MarkdownV2",
     message_thread_id: threadId,
   });
 });

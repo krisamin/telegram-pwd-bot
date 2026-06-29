@@ -8,12 +8,12 @@ and automations annoying. This bot fills that gap.
 ## What `/pwd` shows
 
 ```
-Chat ID: -1001234567890
-Type: supergroup
-Title: my room
-Username: @myroom        (if public)
-Thread ID: 17585         (forum topics only)
-Your user ID: 1102654295
+chat_id:   -1001234567890
+thread_id: 17585          (forum topics only)
+user_id:   1102654295
+username:  myroom          (if public)
+title:     my room
+type:      supergroup
 ```
 
 ## Stack
