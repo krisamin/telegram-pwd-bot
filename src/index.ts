@@ -44,7 +44,12 @@ bot.catch((err) => {
 
 console.log("pwd bot starting (long polling)...");
 bot.start({
-  onStart: (info) => console.log(`Logged in as @${info.username}`),
+  onStart: async (info) => {
+    await bot.api.setMyCommands([
+      { command: "pwd", description: "Show current chat info (chat_id, thread_id, etc.)" },
+    ]);
+    console.log(`Logged in as @${info.username}`);
+  },
 });
 
 // Graceful shutdown for k8s rollouts.
