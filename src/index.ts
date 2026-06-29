@@ -1,4 +1,4 @@
-import { Bot } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -31,8 +31,7 @@ function buildFields(
   return fields.filter(([, value]) => value !== undefined && value !== "");
 }
 
-// Rich message (Bot API 10.1+): a 2-column table, value wrapped in <code>
-// so a single tap copies just the value.
+// Rich message (Bot API 10.1+): a borderless 2-column key/value table.
 function buildTableHtml(present: Field[]): string {
   const rows = present
     .map(
@@ -42,7 +41,7 @@ function buildTableHtml(present: Field[]): string {
         )}</code></td></tr>`,
     )
     .join("");
-  return `<table bordered><tr><th>key</th><th>value</th></tr>${rows}</table>`;
+  return `<table>${rows}</table>`;
 }
 
 // Fallback for clients/servers without rich message support.
@@ -55,23 +54,36 @@ function buildPlainHtml(present: Field[]): string {
     .join("\n");
 }
 
+// One copy-to-clipboard button per field, two per row. copy_text is limited
+// to 256 chars by the Bot API.
+function buildKeyboard(present: Field[]): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  present.forEach(([key, value], i) => {
+    kb.copyText(`📋 ${key}`, String(value).slice(0, 256));
+    if (i % 2 === 1) kb.row();
+  });
+  return kb;
+}
+
 bot.command("pwd", async (ctx) => {
   const chat = ctx.chat;
   const threadId = ctx.message?.message_thread_id;
   const present = buildFields(chat, threadId, ctx.from?.id);
+  const keyboard = buildKeyboard(present);
 
   // Try native rich message table first; fall back to inline-code HTML if the
-  // server/client doesn't support rich messages yet.
+  // server/client doesn't support rich messages yet. Copy buttons (inline
+  // keyboard) work on both paths.
   try {
-    await ctx.api.sendRichMessage(
-      chat.id,
-      { html: buildTableHtml(present) },
-      threadId !== undefined ? { message_thread_id: threadId } : {},
-    );
+    await ctx.api.sendRichMessage(chat.id, { html: buildTableHtml(present) }, {
+      reply_markup: keyboard,
+      ...(threadId !== undefined ? { message_thread_id: threadId } : {}),
+    });
   } catch (err) {
     console.error("sendRichMessage failed, falling back to HTML:", err);
     await ctx.reply(buildPlainHtml(present), {
       parse_mode: "HTML",
+      reply_markup: keyboard,
       message_thread_id: threadId,
     });
   }
