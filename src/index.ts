@@ -24,16 +24,21 @@ bot.command("pwd", async (ctx) => {
   const present = fields.filter(
     ([, value]) => value !== undefined && value !== "",
   );
-  const pad = Math.max(...present.map(([key]) => key.length)) + 1;
+
+  // HTML parse mode: keys as plain text, values wrapped in <code> so a
+  // single tap copies just the value. Only &, <, > need escaping.
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   const body = present
-    .map(([key, value]) => `${(key + ":").padEnd(pad)} ${value}`)
-    .join("\n")
-    // MarkdownV2 code blocks still require escaping backtick and backslash.
-    .replace(/[`\\]/g, "\\$&");
+    .map(
+      ([key, value]) =>
+        `${escapeHtml(key)}: <code>${escapeHtml(String(value))}</code>`,
+    )
+    .join("\n");
 
-  await ctx.reply("```\n" + body + "\n```", {
-    parse_mode: "MarkdownV2",
+  await ctx.reply(body, {
+    parse_mode: "HTML",
     message_thread_id: threadId,
   });
 });
